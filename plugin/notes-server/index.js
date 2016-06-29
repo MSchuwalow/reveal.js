@@ -11,55 +11,87 @@ var server    = http.createServer(app);
 io = io(server);
 
 var opts = {
-	port :      1947,
-	baseDir :   __dirname + '/../../'
+    port :      1947,
+    baseDir :   __dirname + '/../../'
 };
+console.log("base dir: " + opts.baseDir);
+
+var state = undefined;
+var transaction = 1;
 
 io.on( 'connection', function( socket ) {
 
-	socket.on( 'new-subscriber', function( data ) {
-		socket.broadcast.emit( 'new-subscriber', data );
-	});
+    
+    socket.on( 'new-subscriber', function( data ) {
+        console.log('new-sub ');
+        console.log(data);
+        if (state === undefined) {
+            socket.emit('fetch-state', "");
+        } else {
+            var message = { id: transaction, state: state };
+            socket.emit('init-state', message);
+        }
+	//socket.broadcast.emit( 'new-subscriber', data );
+    });
 
-	socket.on( 'statechanged', function( data ) {
-		delete data.state.overview;
-		socket.broadcast.emit( 'statechanged', data );
-	});
+    socket.on( 'push-state', function(data) {
+        state = data;
+    });
 
-	socket.on( 'statechanged-speaker', function( data ) {
-		delete data.state.overview;
-		socket.broadcast.emit( 'statechanged-speaker', data );
-	});
+    /*socket.on( 'statechanged', function( data ) {
+	delete data.state.overview;
+	socket.broadcast.emit( 'statechanged', data );
+    });*/
+    socket.on('update', function(data) {
+        console.info('update ');
+        console.info(data);
+        if (transaction + 1 > data.id) {
+            // lost update, console client
+            socket.emit('discarded', ({ id: transaction, state: state }));
+        } else {
+            socket.broadcast.emit('refresh', data);
+            transaction = data.id;
+            state = data.state;
+        }
+    });
+
+    /*socket.on( 'statechanged-speaker', function( data ) {
+	delete data.state.overview;
+	socket.broadcast.emit( 'statechanged-speaker', data );
+    });*/
 
 });
 
 [ 'css', 'js', 'images', 'plugin', 'lib' ].forEach( function( dir ) {
-	app.use( '/' + dir, staticDir( opts.baseDir + dir ) );
+    app.use( '/' + dir, staticDir( opts.baseDir + dir ) );
 });
 
 app.get('/', function( req, res ) {
 
-	res.writeHead( 200, { 'Content-Type': 'text/html' } );
-	fs.createReadStream( opts.baseDir + '/index.html' ).pipe( res );
+    res.writeHead( 200, { 'Content-Type': 'text/html' } );
+    fs.createReadStream( opts.baseDir + '/index.html' ).pipe( res );
 
 });
 
-app.get( '/notes/:socketId', function( req, res ) {
-
-	fs.readFile( opts.baseDir + 'plugin/notes-server/notes.html', function( err, data ) {
-		res.send( Mustache.to_html( data.toString(), {
-			socketId : req.params.socketId
-		}));
-	});
-
+app.get( '/notes/', function( req, res ) {
+    res.writeHead( 200, { 'Content-Type': 'text/html' } );
+    fs.createReadStream( opts.baseDir + 'plugin/notes-server/notes.html' ).pipe( res );
 });
+/*
+    fs.readFile( opts.baseDir + 'plugin/notes-server/notes.html', function( err, data ) {
+	res.send( Mustache.to_html( data.toString(), {
+	    socketId : req.params.socketId
+	}));
+    });
+
+});*/
 
 // Actually listen
 server.listen( opts.port || null );
 
 var brown = '\033[33m',
-	green = '\033[32m',
-	reset = '\033[0m';
+    green = '\033[32m',
+    reset = '\033[0m';
 
 var slidesLocation = 'http://localhost' + ( opts.port ? ( ':' + opts.port ) : '' );
 
