@@ -4,66 +4,12 @@
 	notesValue,
 	currentState,
 	currentSlide,
-	upcomingSlide,
-	connected = false;
+	upcomingSlide;
 
-/*    var socket = io.connect( window.location.origin ),
-	socketId = '{{socketId}}';
-
-    socket.emit('new-subscriber', "");
-    var transaction = 0;
-    function post() {
-
-        /*	var slideElement = Reveal.getCurrentSlide(),
-	        notesElement = slideElement.querySelector( 'aside.notes' );
-
-	        var messageData = {
-	        notes: '',
-	        markdown: false,
-	        socketId: socketId,
-	        state: Reveal.getState()
-	        };
-
-	        // Look for notes defined in a slide attribute
-	        if( slideElement.hasAttribute( 'data-notes' ) ) {
-	        messageData.notes = slideElement.getAttribute( 'data-notes' );
-	        }
-
-	        // Look for notes defined in an aside element
-	        if( notesElement ) {
-	        messageData.notes = notesElement.innerHTML;
-	        messageData.markdown = typeof notesElement.getAttribute( 'data-markdown' ) === 'string';
-	        }
-
-	        socket.emit( 'statechanged', messageData );*/
-    /*    transaction++;
-        var msg = { id: transaction, state: Reveal.getState() };
-        setState(msg.state);
-        socket.emit( 'update', msg);
-    }*/
     setupKeyboard();
     setupNotes();
     setupTimer();
 
-    /*socket.on('fetch-state', function (data) {
-        var state = window.localStorage.getItem("reveal-state");
-        if (state == undefined) {
-            Reveal.slide(0);
-            state = Reveal.getState();
-            setState(state);
-        } else {
-            state = JSON.parse(state);
-        }
-        socket.emit('push-state', state);
-        transaction = 1;
-    });
-    var updateStuff = function (data) {
-        transaction = data.id;
-        setState(data.state);
-    };
-    socket.on('init-state', updateStuff);
-    socket.on('discarded', updateStuff);
-    socket.on('refresh', updateStuff);*/
 
     // Load our presentation iframes
     setupIframes();
@@ -71,33 +17,12 @@
     // Once the iframes have loaded, emit a signal saying there's
     // a new subscriber which will trigger a 'statechanged'
     // message to be sent back
-    /*window.addEventListener( 'message', function( event ) {
-
-	var data = JSON.parse( event.data );
-
-	if( data && data.namespace === 'reveal' ) {
-	    if( /ready/.test( data.eventName ) ) {
-		socket.emit( 'new-subscriber', { socketId: socketId } );
-	    }
-	}
-
-	// Messages sent by reveal.js inside of the current slide preview
-	if( data && data.namespace === 'reveal' ) {
-	    if( /slidechanged|fragmentshown|fragmenthidden|overviewshown|overviewhidden|paused|resumed/.test( data.eventName ) && currentState !== JSON.stringify( data.state ) ) {
-		socket.emit( 'statechanged-speaker', { state: data.state } );
-	    }
-	}
-
-    } );*/
-
+    
     /**
-     * Called when the main window sends an updated state.
+     * update notes, sent by currentSlide-frame
      */
-    /*function handleStateMessage( data ) {
-
-	// Store the most recently set state to avoid circular loops
-	// applying the same state
-	currentState = JSON.stringify( data.state );
+    window.addEventListener('message', function(event) {
+        var data = event.data;
 
 	// No need for updating the notes in case of fragment changes
 	if ( data.notes ) {
@@ -108,20 +33,10 @@
 	    else {
 		notesValue.innerHTML = data.notes;
 	    }
-	}
-	else {
+	} else {
 	    notes.classList.add( 'hidden' );
 	}
-
-	// Update the note slides
-	currentSlide.contentWindow.postMessage( JSON.stringify({ method: 'setState', args: [ data.state ] }), '*' );
-	upcomingSlide.contentWindow.postMessage( JSON.stringify({ method: 'setState', args: [ data.state ] }), '*' );
-	upcomingSlide.contentWindow.postMessage( JSON.stringify({ method: 'next' }), '*' );
-
-    }
-
-    // Limit to max one state update per X ms
-    handleStateMessage = debounce( handleStateMessage, 200 );
+    });
 
     /**
      * Forward keyboard events to the current slide window.
@@ -133,6 +48,7 @@
 	document.addEventListener( 'keydown', function( event ) {
 	    currentSlide.contentWindow.postMessage( JSON.stringify({ method: 'triggerKey', args: [ event.keyCode ] }), '*' );
 	} );
+
 
     }
 
@@ -157,6 +73,10 @@
 	currentSlide.setAttribute( 'height', 1024 );
 	currentSlide.setAttribute( 'src', currentURL );
 	document.querySelector( '#current-slide' ).appendChild( currentSlide );
+        // subscribe to updates by notifying iframe
+        currentSlide.contentWindow.addEventListener("load", function (e) {
+            currentSlide.contentWindow.postMessage("note-updates", window.location.origin.replace("notes/", ""));
+        });
 
 	upcomingSlide = document.createElement( 'iframe' );
 	upcomingSlide.setAttribute( 'width', 640 );
@@ -173,7 +93,6 @@
 
 	notes = document.querySelector( '.speaker-controls-notes' );
 	notesValue = document.querySelector( '.speaker-controls-notes .value' );
-
     }
 
     /**
@@ -228,36 +147,5 @@
 	return str.substring( str.length - 2 );
 
     }
-
-    /**
-     * Limits the frequency at which a function can be called.
-     function debounce( fn, ms ) {
-
-     var lastTime = 0,
-     timeout;
-
-     return function() {
-
-     var args = arguments;
-     var context = this;
-
-     clearTimeout( timeout );
-
-     var timeSinceLastCall = Date.now() - lastTime;
-     if( timeSinceLastCall > ms ) {
-     fn.apply( context, args );
-     lastTime = Date.now();
-     }
-     else {
-     timeout = setTimeout( function() {
-     fn.apply( context, args );
-     lastTime = Date.now();
-     }, ms - timeSinceLastCall );
-     }
-
-     }
-
-     }
-    */
 
 })();

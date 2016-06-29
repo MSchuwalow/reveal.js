@@ -16,49 +16,35 @@ var opts = {
 };
 console.log("base dir: " + opts.baseDir);
 
-var state = undefined;
-var transaction = 1;
+var state = undefined; // store current state on server
+var transaction = 1; // transaction ids to handle conflicting requests, avoid lost updates
 
 io.on( 'connection', function( socket ) {
-
     
+    // handshake
     socket.on( 'new-subscriber', function( data ) {
-        console.log('new-sub ');
-        console.log(data);
-        if (state === undefined) {
+        if (state === undefined) { // client stores last slide in localStorage, fetch it
             socket.emit('fetch-state', "");
-        } else {
-            var message = { id: transaction, state: state };
-            socket.emit('init-state', message);
+        } else { // client already connected, send current state and transaction id
+            socket.emit('init-state', { id: transaction, data: state });
         }
-	//socket.broadcast.emit( 'new-subscriber', data );
     });
-
+    // receive start slide
     socket.on( 'push-state', function(data) {
-        state = data;
+        state = data.data;
     });
 
-    /*socket.on( 'statechanged', function( data ) {
-	delete data.state.overview;
-	socket.broadcast.emit( 'statechanged', data );
-    });*/
-    socket.on('update', function(data) {
-        console.info('update ');
-        console.info(data);
-        if (transaction + 1 > data.id) {
-            // lost update, console client
-            socket.emit('discarded', ({ id: transaction, state: state }));
+   socket.on('update', function(data) {
+        if (transaction + 1 > data.id) { 
+            // lost update, notify client, send update again
+            socket.emit('discarded', ({ id: transaction, data: state }));
         } else {
+            // apply update, broadcast
             socket.broadcast.emit('refresh', data);
             transaction = data.id;
-            state = data.state;
+            state = data.data;
         }
     });
-
-    /*socket.on( 'statechanged-speaker', function( data ) {
-	delete data.state.overview;
-	socket.broadcast.emit( 'statechanged-speaker', data );
-    });*/
 
 });
 
@@ -73,20 +59,13 @@ app.get('/', function( req, res ) {
 
 });
 
+// no special id's in url needed anymore
 app.get( '/notes/', function( req, res ) {
     res.writeHead( 200, { 'Content-Type': 'text/html' } );
     fs.createReadStream( opts.baseDir + 'plugin/notes-server/notes.html' ).pipe( res );
 });
-/*
-    fs.readFile( opts.baseDir + 'plugin/notes-server/notes.html', function( err, data ) {
-	res.send( Mustache.to_html( data.toString(), {
-	    socketId : req.params.socketId
-	}));
-    });
 
-});*/
-
-// Actually listen
+/// Actually listen
 server.listen( opts.port || null );
 
 var brown = '\033[33m',
