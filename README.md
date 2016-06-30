@@ -392,7 +392,9 @@ Reveal.configure({
 
 ### Touch Navigation
 
-You can swipe to navigate through a presentation on any touch-enabled device. Horizontal swipes change between horizontal slides, vertical swipes change between vertical slides. If you wish to disable this you can set the `touch` config option to false when initializing reveal.js.
+You can swipe to navigate through a presentation on any touch-enabled device. Horizontal swipes change between horizontal slides, vertical swipes change between vertical slides.
+If you wish to disable this you can set the `touch` config option to false when initializing reveal.js.
+Clicking/Tapping advances to the next elememt, no matter whether it is a fragment or horizontal/vertical slide.
 
 If there's some part of your content that needs to remain accessible to touch events you'll need to highlight this by adding a `data-prevent-swipe` attribute to the element. One common example where this is useful is elements that need to be scrolled.
 
@@ -910,7 +912,11 @@ Then:
 1. Install [Node.js](http://nodejs.org/) (1.0.0 or later)
 2. Run ```npm install```
 3. Run ```node plugin/notes-server```
+4. The notes are hnow accessible under http://localhost:1947/notes, whereas the normal presentation can be found at http://localhost:1947/.
 
+## Remote Control
+Using the notes-server, you can also control your presentation from other devices.
+Just connect to the server and any change you make on one device will be mirrored on all other devices.
 
 ## Multiplexing
 
